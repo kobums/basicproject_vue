@@ -55,6 +55,7 @@ import BackToTop from '../components/BackToTop.vue'
 import ListManager, {
   type ListManagerItem,
 } from '../components/ListManager.vue'
+import OrgChart, { type OrgChartItem } from '../components/OrgChart.vue'
 import heroImg from '../assets/hero.png'
 import { useLoading } from '../stores/loading'
 import { useFeedback } from '../stores/feedback'
@@ -198,6 +199,24 @@ const sort = ref<{ key: string; dir: 'asc' | 'desc' }>({
 })
 
 // 4차 신규 컴포넌트 데모 상태
+// OrgChart 데모 — parentId 자기참조 평면 목록 + 선택 키
+const orgKey = ref<string | null>(null)
+const ORG_ITEMS: OrgChartItem[] = [
+  { id: 1, name: '베이직컴퍼니' },
+  { id: 10, parentId: 1, name: '경영지원본부', count: 3 },
+  { id: 11, parentId: 10, name: '인사팀', count: 6 },
+  { id: 12, parentId: 10, name: '재무팀', count: 5 },
+  { id: 13, parentId: 10, name: '총무팀', count: 4 },
+  { id: 20, parentId: 1, name: '개발본부', count: 2 },
+  { id: 21, parentId: 20, name: '플랫폼팀', count: 4 },
+  { id: 22, parentId: 21, name: '백엔드파트', count: 8 },
+  { id: 23, parentId: 21, name: '프론트엔드파트', count: 7 },
+  { id: 24, parentId: 20, name: '인프라팀', count: 5 },
+  { id: 30, parentId: 1, name: '영업본부', count: 2 },
+  { id: 31, parentId: 30, name: '국내영업팀', count: 9 },
+  { id: 32, parentId: 30, name: '해외영업팀', count: 6 },
+]
+
 const todos = ref<ListManagerItem[]>([
   { id: 1, label: '백로그 정리' },
   { id: 2, label: 'API 명세 작성' },
@@ -827,6 +846,15 @@ function handlePick(user: User) {
           (label: string) =>
             notify({ type: 'success', message: `${label} 선택` })
         "
+      />
+    </div>
+
+    <div class="demo-section">
+      <h2>OrgChart</h2>
+      <OrgChart
+        :items="ORG_ITEMS"
+        :selected-key="orgKey"
+        @select="(key: string | null) => (orgKey = key)"
       />
     </div>
 
