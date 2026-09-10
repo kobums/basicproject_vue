@@ -6,11 +6,11 @@ import { deleteBoard } from '../api/boards'
 import { formatDateTime } from '../lib/format'
 import ConfirmModal from '../components/ConfirmModal.vue'
 import ImageLightbox from '../components/ImageLightbox.vue'
-import { useFeedback } from '../stores/feedback'
+import { useFeedbackStore } from '../stores/feedback'
 
 const route = useRoute()
 const router = useRouter()
-const notify = useFeedback()
+const { notify } = useFeedbackStore()
 
 const boardId = computed(() => Number(route.params.id))
 const { board, loading, error } = useBoard(boardId)

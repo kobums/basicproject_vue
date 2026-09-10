@@ -4,10 +4,10 @@ import { useRouter } from 'vue-router'
 import UserForm, { type UserFormValues } from '../components/UserForm.vue'
 import { createUser } from '../api/users'
 import { HttpError } from '../api/client'
-import { useFeedback } from '../stores/feedback'
+import { useFeedbackStore } from '../stores/feedback'
 
 const router = useRouter()
-const notify = useFeedback()
+const { notify } = useFeedbackStore()
 
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})

@@ -6,11 +6,11 @@ import { deleteUser } from '../api/users'
 import { formatDateTime } from '../lib/format'
 import ConfirmModal from '../components/ConfirmModal.vue'
 import DescriptionList from '../components/DescriptionList.vue'
-import { useFeedback } from '../stores/feedback'
+import { useFeedbackStore } from '../stores/feedback'
 
 const route = useRoute()
 const router = useRouter()
-const notify = useFeedback()
+const { notify } = useFeedbackStore()
 
 const userId = computed(() => Number(route.params.id))
 const { user, loading, error } = useUser(userId)

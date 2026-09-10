@@ -57,13 +57,13 @@ import ListManager, {
 } from '../components/ListManager.vue'
 import OrgChart, { type OrgChartItem } from '../components/OrgChart.vue'
 import heroImg from '../assets/hero.png'
-import { useLoading } from '../stores/loading'
-import { useFeedback } from '../stores/feedback'
+import { useLoadingStore } from '../stores/loading'
+import { useFeedbackStore } from '../stores/feedback'
 import { fetchUsers } from '../api/users'
 import type { User } from '../types/user'
 
-const notify = useFeedback()
-const loading = useLoading()
+const { notify } = useFeedbackStore()
+const loading = useLoadingStore()
 
 // ---- DataTable 데모용 샘플 데이터 ----
 interface DemoRow {

@@ -1,4 +1,5 @@
-import { reactive } from 'vue'
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
 
 export type FeedbackType = 'success' | 'error'
 
@@ -14,24 +15,19 @@ export interface ToastItem extends FeedbackOptions {
 }
 
 // 앱 전역 토스트 목록. ToastStack.vue 가 렌더링하고, 페이지는 notify() 만 호출한다.
-const toasts = reactive<ToastItem[]>([])
-let nextId = 0
+export const useFeedbackStore = defineStore('feedback', () => {
+  const toasts = ref<ToastItem[]>([])
+  let nextId = 0
 
-export function notify(options: FeedbackOptions): void {
-  nextId += 1
-  toasts.push({ ...options, id: nextId })
-}
+  function notify(options: FeedbackOptions): void {
+    nextId += 1
+    toasts.value.push({ ...options, id: nextId })
+  }
 
-export function removeToast(id: number): void {
-  const idx = toasts.findIndex((t) => t.id === id)
-  if (idx !== -1) toasts.splice(idx, 1)
-}
+  function remove(id: number): void {
+    const idx = toasts.value.findIndex((t) => t.id === id)
+    if (idx !== -1) toasts.value.splice(idx, 1)
+  }
 
-// 성공/실패 피드백 토스트를 띄우는 함수를 반환하는 composable
-export function useFeedback() {
-  return notify
-}
-
-export function useToasts() {
-  return toasts
-}
+  return { toasts, notify, remove }
+})

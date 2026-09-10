@@ -11,7 +11,7 @@ import ComponentsPage from '../pages/ComponentsPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import SignupPage from '../pages/SignupPage.vue'
 import NotFoundPage from '../pages/NotFoundPage.vue'
-import { useAuth, waitForAuthRestore } from '../stores/auth'
+import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -53,9 +53,9 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth) return
   // 새로고침 직후라면 저장된 토큰의 복구(/auth/me)가 끝난 뒤에 인증 여부를 판단한다.
-  await waitForAuthRestore()
-  const { isAuthenticated } = useAuth()
-  if (!isAuthenticated.value) {
+  const auth = useAuthStore()
+  await auth.waitForRestore()
+  if (!auth.isAuthenticated) {
     return { path: '/login', query: { redirect: to.fullPath }, replace: true }
   }
 })

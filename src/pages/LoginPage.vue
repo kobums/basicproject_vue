@@ -4,13 +4,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { login } from '../api/auth'
 import { HttpError } from '../api/client'
 import BaseInput from '../components/BaseInput.vue'
-import { useAuth } from '../stores/auth'
-import { useFeedback } from '../stores/feedback'
+import { useAuthStore } from '../stores/auth'
+import { useFeedbackStore } from '../stores/feedback'
 
 const route = useRoute()
 const router = useRouter()
-const notify = useFeedback()
-const { setSession } = useAuth()
+const { notify } = useFeedbackStore()
+const { setSession } = useAuthStore()
 
 const email = ref('')
 const password = ref('')

@@ -4,12 +4,12 @@ import { useRouter } from 'vue-router'
 import UserForm, { type UserFormValues } from '../components/UserForm.vue'
 import { signup } from '../api/auth'
 import { HttpError } from '../api/client'
-import { useAuth } from '../stores/auth'
-import { useFeedback } from '../stores/feedback'
+import { useAuthStore } from '../stores/auth'
+import { useFeedbackStore } from '../stores/feedback'
 
 const router = useRouter()
-const notify = useFeedback()
-const { setSession } = useAuth()
+const { notify } = useFeedbackStore()
+const { setSession } = useAuthStore()
 
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})

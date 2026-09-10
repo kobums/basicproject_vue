@@ -5,11 +5,11 @@ import BoardForm, { type BoardFormValues } from '../components/BoardForm.vue'
 import { useBoard } from '../composables/useBoard'
 import { updateBoard } from '../api/boards'
 import { HttpError } from '../api/client'
-import { useFeedback } from '../stores/feedback'
+import { useFeedbackStore } from '../stores/feedback'
 
 const route = useRoute()
 const router = useRouter()
-const notify = useFeedback()
+const { notify } = useFeedbackStore()
 
 const boardId = computed(() => Number(route.params.id))
 const { board, loading, error } = useBoard(boardId)

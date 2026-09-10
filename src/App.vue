@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { useAuth } from './stores/auth'
+import { storeToRefs } from 'pinia'
+import { useAuthStore } from './stores/auth'
 import ToastStack from './components/ToastStack.vue'
 import LoadingOverlay from './components/LoadingOverlay.vue'
 
-const { user, isAuthenticated, logout } = useAuth()
+const auth = useAuthStore()
+const { user, isAuthenticated } = storeToRefs(auth)
 const router = useRouter()
 
 function handleLogout() {
-  logout()
+  auth.logout()
   router.replace('/')
 }
 </script>
