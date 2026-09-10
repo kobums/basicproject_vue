@@ -36,7 +36,8 @@ const ANIM_MS = 520
 
 type VB = [number, number, number, number]
 
-const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+const easeInOutCubic = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 
 interface GraphNode {
   key: string
@@ -59,7 +60,9 @@ function buildGraph(items: OrgChartItem[]): Graph {
   items.forEach((it) => {
     const key = String(it.id)
     const parentKey =
-      it.parentId != null && String(it.parentId) !== key ? String(it.parentId) : null
+      it.parentId != null && String(it.parentId) !== key
+        ? String(it.parentId)
+        : null
     byKey.set(key, {
       key,
       name: it.name,
@@ -93,7 +96,9 @@ function buildGraph(items: OrgChartItem[]): Graph {
     if (n.parentKey) byKey.get(n.parentKey)!.childKeys.push(n.key)
   })
   byKey.forEach((n) => {
-    n.childKeys.sort((a, b) => byKey.get(a)!.name.localeCompare(byKey.get(b)!.name, 'ko'))
+    n.childKeys.sort((a, b) =>
+      byKey.get(a)!.name.localeCompare(byKey.get(b)!.name, 'ko'),
+    )
   })
 
   const rootKeys = [...byKey.values()]
@@ -117,7 +122,10 @@ interface GNode extends GraphNode {
 }
 
 /** 펼쳐진(expanded) 노드의 하위만 그리는 tidy 레이아웃 */
-function layoutVisible(graph: Graph, expanded: Set<string>): { nodes: GNode[]; bounds: VB } {
+function layoutVisible(
+  graph: Graph,
+  expanded: Set<string>,
+): { nodes: GNode[]; bounds: VB } {
   const nodes: GNode[] = []
   let cursor = 0
   const place = (key: string, depth: number): GNode => {
@@ -216,7 +224,9 @@ let pan: { id: number; x: number; y: number } | null = null
 let moved = false
 
 const focusKey = computed(() =>
-  props.selectedKey && nodeMap.value.has(props.selectedKey) ? props.selectedKey : null,
+  props.selectedKey && nodeMap.value.has(props.selectedKey)
+    ? props.selectedKey
+    : null,
 )
 
 // 포커스: 상위 조직 하나 + 자신 + (펼쳐져 있는) 직계 하위들만
@@ -353,8 +363,10 @@ function edgePath(n: GNode): string {
   return `M ${x1} ${y1} C ${x1} ${my}, ${n.x} ${my}, ${n.x} ${n.y}`
 }
 
-const dimmed = (key: string) => (visible.value ? !visible.value.has(key) : false)
-const label = (n: GNode) => (n.name.length > 10 ? `${n.name.slice(0, 10)}…` : n.name)
+const dimmed = (key: string) =>
+  visible.value ? !visible.value.has(key) : false
+const label = (n: GNode) =>
+  n.name.length > 10 ? `${n.name.slice(0, 10)}…` : n.name
 
 /** 재클릭 접기: 자신 + 모든 하위의 펼침 상태를 제거 */
 function collapseSubtree(key: string) {
@@ -389,7 +401,9 @@ function resetAll() {
   animateTo(bounds.value)
 }
 
-const shownVb = computed(() => (vb.value.every((v) => Number.isFinite(v)) ? vb.value : bounds.value))
+const shownVb = computed(() =>
+  vb.value.every((v) => Number.isFinite(v)) ? vb.value : bounds.value,
+)
 </script>
 
 <template>
@@ -398,10 +412,22 @@ const shownVb = computed(() => (vb.value.every((v) => Number.isFinite(v)) ? vb.v
   </div>
   <div v-else class="org-wrap">
     <div class="org-tools">
-      <button type="button" class="btn btn-sm" aria-label="확대" @click="zoomBy(1 / 1.4)">
+      <button
+        type="button"
+        class="btn btn-sm"
+        aria-label="확대"
+        @click="zoomBy(1 / 1.4)"
+      >
         ＋
       </button>
-      <button type="button" class="btn btn-sm" aria-label="축소" @click="zoomBy(1.4)">－</button>
+      <button
+        type="button"
+        class="btn btn-sm"
+        aria-label="축소"
+        @click="zoomBy(1.4)"
+      >
+        －
+      </button>
       <button type="button" class="btn btn-sm" @click="resetAll">전체</button>
     </div>
     <svg
@@ -416,7 +442,13 @@ const shownVb = computed(() => (vb.value.every((v) => Number.isFinite(v)) ? vb.v
     >
       <defs>
         <filter id="org-shadow" x="-20%" y="-20%" width="140%" height="150%">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#191f28" flood-opacity="0.10" />
+          <feDropShadow
+            dx="0"
+            dy="2"
+            stdDeviation="3"
+            flood-color="#191f28"
+            flood-opacity="0.10"
+          />
         </filter>
       </defs>
       <template v-for="n in nodes" :key="`e-${n.key}`">
@@ -444,7 +476,10 @@ const shownVb = computed(() => (vb.value.every((v) => Number.isFinite(v)) ? vb.v
         @keydown.space.prevent="pick(n.key)"
       >
         <title>
-          {{ n.name }}{{ n.hiddenKids > 0 ? ` — 하위 ${n.hiddenKids}개 (클릭해 펼치기)` : '' }}
+          {{ n.name
+          }}{{
+            n.hiddenKids > 0 ? ` — 하위 ${n.hiddenKids}개 (클릭해 펼치기)` : ''
+          }}
         </title>
         <rect
           :class="n.isRoot ? 'org-root' : 'org-box'"
@@ -472,9 +507,15 @@ const shownVb = computed(() => (vb.value.every((v) => Number.isFinite(v)) ? vb.v
         >
           {{ n.count }}명
         </text>
-        <g v-if="n.hiddenKids > 0" class="org-more" :transform="`translate(${n.w / 2}, ${n.h})`">
+        <g
+          v-if="n.hiddenKids > 0"
+          class="org-more"
+          :transform="`translate(${n.w / 2}, ${n.h})`"
+        >
           <rect :x="-17" :y="-9" :width="34" :height="18" :rx="9" />
-          <text text-anchor="middle" dominant-baseline="central">+{{ n.hiddenKids }}</text>
+          <text text-anchor="middle" dominant-baseline="central">
+            +{{ n.hiddenKids }}
+          </text>
         </g>
       </g>
     </svg>
