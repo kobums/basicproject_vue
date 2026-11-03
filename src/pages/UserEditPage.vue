@@ -1,54 +1,57 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UserForm, { type UserFormValues } from '../components/UserForm.vue'
 import { useUser } from '../composables/useUser'
-import { updateUser } from '../api/users'
-import { HttpError } from '../api/client'
+import type { UpdateUserRequest } from '../types/user'
+import { errorMessage, fieldErrorsOf } from '../lib/errors'
+import { useFeedbackStore } from '../stores/feedback'
 
 const route = useRoute()
 const router = useRouter()
+const { notify } = useFeedbackStore()
 
 const userId = computed(() => Number(route.params.id))
-const { user, loading, error } = useUser(userId)
+const { item: user, loading, error, fetchOne } = useUser()
+const { update, loading: submitting } = useUser()
 
-const submitting = ref(false)
+watch(userId, (id) => void fetchOne(id), { immediate: true })
+
 const fieldErrors = ref<Record<string, string>>({})
 
 async function handleSubmit(values: UserFormValues) {
-  submitting.value = true
   fieldErrors.value = {}
+  // 이메일은 바꾸지 않는다. 비밀번호(passwd)는 입력했을 때만 보낸다 (비우면 기존 값 유지).
+  const body: UpdateUserRequest = { name: values.name }
+  if (values.password) body.passwd = values.password
   try {
-    // 이메일은 변경하지 않음. 비밀번호는 비우면 기존 값 유지.
-    await updateUser(userId.value, {
-      name: values.name,
-      password: values.password,
-    })
-    router.push('/users')
+    await update(userId.value, body)
   } catch (e) {
-    if (e instanceof HttpError && e.status === 400) {
-      fieldErrors.value = e.fieldErrors
-    } else {
-      alert(e instanceof Error ? e.message : '수정에 실패했습니다.')
-    }
-    submitting.value = false
+    fieldErrors.value = fieldErrorsOf(e)
+    notify({ type: 'error', message: errorMessage(e, '수정에 실패했습니다.') })
+    return
   }
+  notify({ type: 'success', message: '회원 정보가 수정되었습니다.' })
+  router.push(`/users/${userId.value}`)
 }
 </script>
 
 <template>
   <p v-if="loading" class="muted page">불러오는 중…</p>
-  <p v-else-if="error" class="error page">{{ error }}</p>
+  <p v-else-if="error" class="error page">
+    {{ errorMessage(error, '회원 정보를 불러오지 못했습니다.') }}
+  </p>
   <section v-else-if="user" class="page">
     <h1>회원 수정</h1>
     <UserForm
       mode="edit"
       :initial-email="user.email"
-      :initial-name="user.name ?? ''"
+      :initial-name="user.name"
       :submitting="submitting"
       :field-errors="fieldErrors"
       @submit="handleSubmit"
-      @cancel="router.push('/users')"
+      @cancel="router.push(`/users/${userId}`)"
     />
   </section>
+  <p v-else class="muted page">회원이 없습니다.</p>
 </template>

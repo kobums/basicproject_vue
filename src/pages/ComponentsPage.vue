@@ -59,7 +59,7 @@ import OrgChart, { type OrgChartItem } from '../components/OrgChart.vue'
 import heroImg from '../assets/hero.png'
 import { useLoadingStore } from '../stores/loading'
 import { useFeedbackStore } from '../stores/feedback'
-import { fetchUsers } from '../api/users'
+import UserModel from '../models/user'
 import type { User } from '../types/user'
 
 const { notify } = useFeedbackStore()
@@ -258,8 +258,14 @@ const sortableColumns: DataTableColumn[] = demoColumns.map((col) => ({
   sortable: col.key === 'id' || col.key === 'name' || col.key === 'joinedAt',
 }))
 
+// 생성 모델로 1-based 페이지를 읽는다. 이름 필터는 부분 일치다 (관리자가 아니면 본인만 보인다).
 const fetchPickerUsers = (page: number, keyword: string) =>
-  fetchUsers(page, keyword, 5)
+  UserModel.findpage({
+    page,
+    pagesize: 5,
+    name: keyword || undefined,
+    orderby: 'id desc',
+  })
 
 function showLoadingDemo() {
   loading.show()
@@ -268,7 +274,7 @@ function showLoadingDemo() {
 
 function handlePick(user: User) {
   pickedUser.value = user
-  notify({ type: 'success', message: `${user.name ?? user.email} 선택됨` })
+  notify({ type: 'success', message: `${user.name || user.email} 선택됨` })
 }
 </script>
 
@@ -460,7 +466,7 @@ function handlePick(user: User) {
           회원 선택
         </button>
         <span v-if="pickedUser" class="demo-value">
-          선택된 회원: <code>{{ pickedUser.name ?? pickedUser.email }}</code>
+          선택된 회원: <code>{{ pickedUser.name || pickedUser.email }}</code>
         </span>
       </div>
       <SearchPickerModal
@@ -469,7 +475,7 @@ function handlePick(user: User) {
         :fetch-items="fetchPickerUsers"
         :columns="userColumns"
         :row-key="(u: User) => u.id"
-        placeholder="이름 또는 이메일로 검색"
+        placeholder="이름 일부로 검색"
         @close="pickerOpen = false"
         @select="handlePick"
       />

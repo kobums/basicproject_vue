@@ -13,28 +13,47 @@ import SignupPage from '../pages/SignupPage.vue'
 import NotFoundPage from '../pages/NotFoundPage.vue'
 import { useAuthStore } from '../stores/auth'
 
+// 게시판 / 회원 화면은 로그인이 필요하다 (gomachine/model.json auth: jwt).
+//   - board: read "login" → 로그인 사용자는 모든 글을 읽는다. 수정 / 삭제는 작성자만 (session).
+//   - user: 본인 행만 읽는다. 관리자(level ≥ ADMIN_LEVEL)는 모든 회원. 회원 추가 화면은 관리자만 (requiresAdmin).
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', component: BoardListPage },
+    {
+      path: '/',
+      component: BoardListPage,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/boards/new',
       component: BoardWritePage,
       meta: { requiresAuth: true },
     },
-    { path: '/boards/:id', component: BoardDetailPage },
+    {
+      path: '/boards/:id',
+      component: BoardDetailPage,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/boards/:id/edit',
       component: BoardEditPage,
       meta: { requiresAuth: true },
     },
-    { path: '/users', component: UserListPage },
+    {
+      path: '/users',
+      component: UserListPage,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/users/new',
       component: UserWritePage,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/users/:id',
+      component: UserDetailPage,
       meta: { requiresAuth: true },
     },
-    { path: '/users/:id', component: UserDetailPage },
     {
       path: '/users/:id/edit',
       component: UserEditPage,
@@ -57,6 +76,9 @@ router.beforeEach(async (to) => {
   await auth.waitForRestore()
   if (!auth.isAuthenticated) {
     return { path: '/login', query: { redirect: to.fullPath }, replace: true }
+  }
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return { path: '/users', replace: true }
   }
 })
 
