@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+// gomachine HTTP 계약과 같이 page 는 1 부터다 (GET /{table}?page=1&pagesize=10 → total).
 const props = withDefaults(
   defineProps<{
-    page: number // 0-based 현재 페이지
-    totalPages: number
+    page: number // 1-based 현재 페이지
+    total: number // 전체 행 수 (생성 composable 의 total)
+    pageSize: number // 한 페이지 행 수 (pagesize)
     blockSize?: number // 한 번에 보여줄 페이지 번호 개수 (기본 10)
   }>(),
   { blockSize: 10 },
@@ -12,22 +14,23 @@ const props = withDefaults(
 
 const emit = defineEmits<{ change: [page: number] }>()
 
-// 현재 페이지가 속한 블록(10개 단위)의 시작/끝 페이지 (0-based)
+const totalPages = computed(() =>
+  props.pageSize > 0 ? Math.ceil(props.total / props.pageSize) : 0,
+)
+
+// 현재 페이지가 속한 블록(10개 단위)의 시작/끝 페이지 (1-based)
 const pages = computed(() => {
-  const currentBlock = Math.floor(props.page / props.blockSize)
-  const startPage = currentBlock * props.blockSize
-  const endPage = Math.min(
-    startPage + props.blockSize - 1,
-    props.totalPages - 1,
-  )
+  const currentBlock = Math.floor((props.page - 1) / props.blockSize)
+  const startPage = currentBlock * props.blockSize + 1
+  const endPage = Math.min(startPage + props.blockSize - 1, totalPages.value)
 
   const list: number[] = []
   for (let p = startPage; p <= endPage; p++) list.push(p)
   return list
 })
 
-const isFirst = computed(() => props.page <= 0)
-const isLast = computed(() => props.page >= props.totalPages - 1)
+const isFirst = computed(() => props.page <= 1)
+const isLast = computed(() => props.page >= totalPages.value)
 </script>
 
 <template>
@@ -36,7 +39,7 @@ const isLast = computed(() => props.page >= props.totalPages - 1)
       type="button"
       class="page-btn"
       :disabled="isFirst"
-      @click="emit('change', 0)"
+      @click="emit('change', 1)"
     >
       « 맨처음
     </button>
@@ -57,7 +60,7 @@ const isLast = computed(() => props.page >= props.totalPages - 1)
           :aria-current="p === page ? 'page' : undefined"
           @click="emit('change', p)"
         >
-          {{ p + 1 }}
+          {{ p }}
         </button>
       </li>
     </ul>
@@ -74,7 +77,7 @@ const isLast = computed(() => props.page >= props.totalPages - 1)
       type="button"
       class="page-btn"
       :disabled="isLast"
-      @click="emit('change', totalPages - 1)"
+      @click="emit('change', totalPages)"
     >
       맨나중 »
     </button>

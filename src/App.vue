@@ -26,7 +26,7 @@ function handleLogout() {
     </div>
     <div class="topnav-auth">
       <template v-if="isAuthenticated">
-        <span class="topnav-user">{{ user?.name ?? user?.email }}</span>
+        <span class="topnav-user">{{ user?.name || user?.email }}</span>
         <button type="button" class="btn btn-sm" @click="handleLogout">
           로그아웃
         </button>

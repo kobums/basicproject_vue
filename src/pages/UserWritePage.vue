@@ -2,39 +2,34 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import UserForm, { type UserFormValues } from '../components/UserForm.vue'
-import { createUser } from '../api/users'
-import { HttpError } from '../api/client'
+import { useUser } from '../composables/useUser'
+import { errorMessage, fieldErrorsOf } from '../lib/errors'
 import { useFeedbackStore } from '../stores/feedback'
 
 const router = useRouter()
 const { notify } = useFeedbackStore()
+const { create, loading: submitting, error } = useUser()
 
-const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 
 async function handleSubmit(values: UserFormValues) {
-  submitting.value = true
   fieldErrors.value = {}
-  try {
-    await createUser(values)
-    notify({ type: 'success', message: '회원이 등록되었습니다.' })
-    router.push('/users')
-  } catch (e) {
-    if (e instanceof HttpError && e.status === 400) {
-      fieldErrors.value = e.fieldErrors
-      const hasField = Object.keys(e.fieldErrors).length > 0
-      notify({
-        type: 'error',
-        message: hasField ? '입력값을 확인해주세요.' : e.message,
-      })
-    } else {
-      notify({
-        type: 'error',
-        message: e instanceof Error ? e.message : '가입에 실패했습니다.',
-      })
-    }
-    submitting.value = false
+  // 생성 API(POST /api/user)는 비밀번호 컬럼 passwd 를 받아 백엔드가 해시한다. level 은 보호 컬럼이라 보내지 않는다.
+  await create({
+    email: values.email,
+    name: values.name,
+    passwd: values.password,
+  })
+  if (error.value) {
+    fieldErrors.value = fieldErrorsOf(error.value)
+    notify({
+      type: 'error',
+      message: errorMessage(error.value, '등록에 실패했습니다.'),
+    })
+    return
   }
+  notify({ type: 'success', message: '회원이 등록되었습니다.' })
+  router.push('/users')
 }
 </script>
 

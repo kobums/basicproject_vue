@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUser } from '../composables/useUser'
-import { deleteUser } from '../api/users'
 import { formatDateTime } from '../lib/format'
+import { errorMessage } from '../lib/errors'
 import ConfirmModal from '../components/ConfirmModal.vue'
 import DescriptionList from '../components/DescriptionList.vue'
 import { useFeedbackStore } from '../stores/feedback'
@@ -13,39 +13,41 @@ const router = useRouter()
 const { notify } = useFeedbackStore()
 
 const userId = computed(() => Number(route.params.id))
-const { user, loading, error } = useUser(userId)
+// 조회와 삭제는 따로 둔다. 회원 수정/삭제는 본인(또는 adminLevel 이상)만 된다.
+const { item: user, loading, error, fetchOne } = useUser()
+const { remove, loading: removing, error: removeError } = useUser()
+
+watch(userId, (id) => void fetchOne(id), { immediate: true })
 
 const confirmOpen = ref(false)
-const deleting = ref(false)
 
 async function handleDelete() {
-  deleting.value = true
-  try {
-    await deleteUser(userId.value)
-    confirmOpen.value = false
-    notify({ type: 'success', message: '회원이 삭제되었습니다.' })
-    router.push('/users')
-  } catch (e) {
-    deleting.value = false
-    confirmOpen.value = false
+  await remove(userId.value)
+  confirmOpen.value = false
+  if (removeError.value) {
     notify({
       type: 'error',
-      message: e instanceof Error ? e.message : '삭제에 실패했습니다.',
+      message: errorMessage(removeError.value, '삭제에 실패했습니다.'),
     })
+    return
   }
+  notify({ type: 'success', message: '회원이 삭제되었습니다.' })
+  router.push('/users')
 }
 </script>
 
 <template>
   <p v-if="loading" class="muted page">불러오는 중…</p>
-  <p v-else-if="error" class="error page">{{ error }}</p>
+  <p v-else-if="error" class="error page">
+    {{ errorMessage(error, '회원 정보를 불러오지 못했습니다.') }}
+  </p>
   <section v-else-if="user" class="page user-detail">
-    <h1>{{ user.name ?? `#${user.id}` }}</h1>
+    <h1>{{ user.name || `#${user.id}` }}</h1>
     <DescriptionList
       :items="[
         { label: '이메일', value: user.email },
-        { label: '이름', value: user.name ?? '-' },
-        { label: '가입일', value: formatDateTime(user.createdAt) },
+        { label: '이름', value: user.name || '-' },
+        { label: '가입일', value: formatDateTime(user.createddate) },
       ]"
     />
 
@@ -55,7 +57,7 @@ async function handleDelete() {
       <button
         type="button"
         class="btn btn-danger"
-        :disabled="deleting"
+        :disabled="removing"
         @click="confirmOpen = true"
       >
         삭제
@@ -66,13 +68,14 @@ async function handleDelete() {
       :open="confirmOpen"
       title="회원 삭제"
       danger
-      :busy="deleting"
+      :busy="removing"
       confirm-label="삭제"
       @close="confirmOpen = false"
       @confirm="handleDelete"
     >
-      <b>{{ user.name ?? `#${user.id}` }}</b> ({{ user.email }}) 회원을
+      <b>{{ user.name || `#${user.id}` }}</b> ({{ user.email }}) 회원을
       삭제하시겠습니까?
     </ConfirmModal>
   </section>
+  <p v-else class="muted page">회원이 없습니다.</p>
 </template>

@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { login } from '../api/auth'
-import { HttpError } from '../api/client'
+import { errorMessage } from '../lib/errors'
 import BaseInput from '../components/BaseInput.vue'
 import { useAuthStore } from '../stores/auth'
 import { useFeedbackStore } from '../stores/feedback'
@@ -10,7 +9,7 @@ import { useFeedbackStore } from '../stores/feedback'
 const route = useRoute()
 const router = useRouter()
 const { notify } = useFeedbackStore()
-const { setSession } = useAuthStore()
+const auth = useAuthStore()
 
 const email = ref('')
 const password = ref('')
@@ -23,14 +22,12 @@ const from =
 async function handleSubmit() {
   submitting.value = true
   try {
-    const res = await login({ email: email.value, password: password.value })
-    setSession(res.token, res.user)
+    await auth.login({ email: email.value, password: password.value })
     router.replace(from)
   } catch (err) {
     notify({
       type: 'error',
-      message:
-        err instanceof HttpError ? err.message : '로그인에 실패했습니다.',
+      message: errorMessage(err, '로그인에 실패했습니다.'),
     })
     submitting.value = false
   }

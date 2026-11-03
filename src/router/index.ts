@@ -13,28 +13,46 @@ import SignupPage from '../pages/SignupPage.vue'
 import NotFoundPage from '../pages/NotFoundPage.vue'
 import { useAuthStore } from '../stores/auth'
 
+// 게시판 / 회원 화면은 로그인이 필요하다. gomachine 백엔드(auth: jwt)는 생성 API 를 모두 로그인한 사용자에게만 열고,
+// board 는 model.json session 설정 때문에 목록도 로그인한 사용자의 글만 돌려준다.
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', component: BoardListPage },
+    {
+      path: '/',
+      component: BoardListPage,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/boards/new',
       component: BoardWritePage,
       meta: { requiresAuth: true },
     },
-    { path: '/boards/:id', component: BoardDetailPage },
+    {
+      path: '/boards/:id',
+      component: BoardDetailPage,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/boards/:id/edit',
       component: BoardEditPage,
       meta: { requiresAuth: true },
     },
-    { path: '/users', component: UserListPage },
+    {
+      path: '/users',
+      component: UserListPage,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/users/new',
       component: UserWritePage,
       meta: { requiresAuth: true },
     },
-    { path: '/users/:id', component: UserDetailPage },
+    {
+      path: '/users/:id',
+      component: UserDetailPage,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/users/:id/edit',
       component: UserEditPage,

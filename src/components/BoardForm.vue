@@ -66,7 +66,7 @@ const actionLabel = computed(() => (props.mode === 'create' ? '등록' : '수정
       label="내용"
       multiline
       :rows="8"
-      placeholder="내용을 입력하세요 (최대 255자)"
+      placeholder="내용을 입력하세요"
       :error="fieldErrors.content"
     />
 
