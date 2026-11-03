@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { isAdmin as isAdminUser } from '../lib/permissions'
 import {
   fetchMe,
   login as loginApi,
@@ -22,6 +23,8 @@ export const useAuthStore = defineStore('auth', () => {
   let restorePromise: Promise<void> | null = null
 
   const isAuthenticated = computed(() => user.value !== null)
+  // 관리자 화면(회원 추가 등)을 보여줄지. 실제 권한 검사는 백엔드가 한다.
+  const isAdmin = computed(() => isAdminUser(user.value))
 
   function clear(): void {
     setToken(null)
@@ -56,16 +59,11 @@ export const useAuthStore = defineStore('auth', () => {
     if (restorePromise) await restorePromise
   }
 
-  // 토큰을 저장하고, 응답에 사용자가 없으면 /auth/me 로 읽는다.
-  async function startSession(result: AuthResult): Promise<AuthUser> {
+  // 토큰과 사용자를 저장한다 (계약상 로그인 / 회원가입 응답에 user 가 있다).
+  function startSession(result: AuthResult): AuthUser {
     setToken(result.token)
-    try {
-      user.value = result.user ?? (await fetchMe())
-    } catch (e) {
-      clear()
-      throw e
-    }
-    return user.value
+    user.value = result.user
+    return result.user
   }
 
   async function login(body: LoginRequest): Promise<AuthUser> {
@@ -83,6 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     user,
     isAuthenticated,
+    isAdmin,
     init,
     waitForRestore,
     login,

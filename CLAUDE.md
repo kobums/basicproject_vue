@@ -4,7 +4,7 @@ gomachine 표준 Vue 3 프론트엔드. 자세한 설명은 README.md.
 
 ## 명령
 
-- `npm run dev` — dev 서버 (:5173, `/api` `/uploads` → `VITE_PROXY_TARGET`, 기본 Go :8007 / Spring :8081 / Rust :8080)
+- `npm run dev` — dev 서버 (:5173, `/api` `/uploads` → `VITE_PROXY_TARGET`, 기본 Go :8007 / Spring :8081 / Rust :8008)
 - `npm run typecheck` / `npm run lint` / `npm run format:check` / `npm test` / `npm run build`
 - 변경 후에는 다섯 개 모두 통과해야 한다.
 
@@ -17,9 +17,15 @@ gomachine 표준 Vue 3 프론트엔드. 자세한 설명은 README.md.
   `get/post/put/patch/del` → `{data, status}`, `HttpError`, `setTokenProvider`, `setUnauthorizedHandler`, `setBaseUrl`).
   토큰 / 401 연결은 `stores/auth.ts` 의 `init()` 한 곳에서만 한다.
 - 테이블 데이터는 생성 composable(`useBoard()`, `useUser()`) 이나 생성 모델(`BoardModel.findpage` 등)로 읽고 쓴다.
-  composable 은 실패를 던지지 않고 `error` 에 담는다 → 호출 뒤 `error.value` 를 확인한다. 조회와 저장은 composable 인스턴스를 따로 쓴다.
+  조회(`fetch*`)는 실패를 `error` 에 담고 던지지 않는다. 쓰기(`create/update/remove`)는 `error` 를 채우고 **다시 던진다** →
+  `try/catch` 로 감싸고 catch 에서 feedback 스토어 `notify` 로 보여준다. 조회와 저장은 composable 인스턴스를 따로 쓴다.
+  `create` 본문은 `Create{Board,User}Request` 타입으로 적는다 (서버가 정하는 user / level / createddate 없음).
+- 권한 노출은 `lib/permissions.ts` 한 곳 (`ADMIN_LEVEL` = model.json `adminLevel`, `isOwner`, `isAdmin`, `canManageUser`).
+  게시글 수정 / 삭제는 작성자만, 회원 관리 화면은 관리자만, 관리자가 아니면 내 정보만.
 - 페이지는 1 부터 (`page`, `pagesize`, `total`). 작성자는 `board.extra?.user`. 날짜 필드는 `createddate` ("yyyy-MM-dd HH:mm:ss").
 - 에러 문구는 `lib/errors.ts` (`errorMessage`, `fieldErrorsOf`): Spring `HttpError` 와 Go `ApiError`(HTTP 200 + code) 를 같이 다룬다.
-- 인증 API(`src/api/auth.ts`)는 `{token|accessToken|access_token, user?}` 와 Go 봉투를 받는다. 모양을 바꾸면 `tests/auth.test.ts` 도 고친다.
+- 인증 API(`src/api/auth.ts`)는 gomachine 인증 API 계약 `{token, tokenType, expiresInMs, user}`, user `{id, email, name, level, createddate}`,
+  업로드 `{filename, url}` (img 에는 url). 모양을 바꾸면 `tests/auth.test.ts`, `tests/upload.test.ts` 도 고친다.
+- 이 템플릿은 `buildtool-model init` 워크스페이스 모드가 프런트엔드로 복사한다. `gomachine/model.json` 의 `table` 은 gomachine `bootstrap/model.json` 과 맞춘다.
 - 스타일: prettier (`semi: false`, single quote, 80 열), eslint (vue, a11y, sonarjs). 주석 / 문서는 한국어.
 - 테스트는 `tests/*.test.ts` (vitest + happy-dom, `tests/helpers.ts` 의 `mockFetch`). Go / Spring 두 응답 모양을 모두 검사한다.

@@ -3,13 +3,14 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BoardForm, { type BoardFormValues } from '../components/BoardForm.vue'
 import { useBoard } from '../composables/useBoard'
+import type { CreateBoardRequest } from '../types/board'
 import { uploadImage } from '../api/upload'
 import { errorMessage, fieldErrorsOf } from '../lib/errors'
 import { useFeedbackStore } from '../stores/feedback'
 
 const router = useRouter()
 const { notify } = useFeedbackStore()
-const { create, loading, error } = useBoard()
+const { create, loading } = useBoard()
 
 const uploading = ref(false)
 const submitting = computed(() => uploading.value || loading.value)
@@ -23,12 +24,12 @@ async function handleSubmit(values: BoardFormValues) {
   }
   fieldErrors.value = {}
 
-  // 이미지는 먼저 업로드해서 받은 파일 이름을 img 컬럼에 넣는다 (선택값).
+  // 이미지는 먼저 업로드해서 받은 url 을 img 컬럼에 넣는다 (선택값).
   let img: string | null = null
   if (values.image) {
     uploading.value = true
     try {
-      img = await uploadImage(values.image)
+      img = (await uploadImage(values.image)).url
     } catch (e) {
       fieldErrors.value = {
         image: errorMessage(e, '이미지 업로드에 실패했습니다.'),
@@ -39,17 +40,18 @@ async function handleSubmit(values: BoardFormValues) {
     }
   }
 
-  const created = await create({
+  // CreateBoardRequest 에는 서버가 정하는 user(작성자) / createddate 가 없다.
+  const body: CreateBoardRequest = {
     title: values.title,
     content: values.content,
     img,
-  })
-  if (error.value) {
-    fieldErrors.value = fieldErrorsOf(error.value)
-    notify({
-      type: 'error',
-      message: errorMessage(error.value, '등록에 실패했습니다.'),
-    })
+  }
+  let created: Awaited<ReturnType<typeof create>>
+  try {
+    created = await create(body)
+  } catch (e) {
+    fieldErrors.value = fieldErrorsOf(e)
+    notify({ type: 'error', message: errorMessage(e, '등록에 실패했습니다.') })
     return
   }
   notify({ type: 'success', message: '게시글이 등록되었습니다.' })

@@ -1,17 +1,13 @@
 // 인증 API (손으로 만든 파일). 생성 모델과 같은 클라이언트(services/api.ts)를 쓴다.
+// gomachine "인증 API 계약" (Go / Spring / Rust 백엔드 템플릿이 같은 모양으로 구현한다):
 //
-//   POST /api/auth/login   { email, password }        → { token, user? }
-//   POST /api/auth/signup  { email, name, password }  → { token, user? }
-//   GET  /api/auth/me      (Authorization: Bearer)    → user
+//   POST /api/auth/signup  { email, password, name }  → 201 { token, tokenType: "Bearer", expiresInMs, user }
+//   POST /api/auth/login   { email, password }        → 200 { token, tokenType: "Bearer", expiresInMs, user }
+//   GET  /api/auth/me      (Authorization: Bearer)    → 200 user
 //
-// 백엔드마다 모양이 조금 달라서 너그럽게 읽는다.
-//   - 토큰 key: token | accessToken | access_token
-//   - 사용자: user 필드, 없으면 로그인 뒤 /auth/me 로 다시 읽는다 (stores/auth.ts)
-//   - Go 식 봉투: { code: "ok", ... }, { code, item: {...} }, { data: {...} } 도 벗긴다.
-//     HTTP 200 + code "error" | "auth error" | "bad request" 는 ApiError 로 던진다.
-//   - 사용자 날짜는 createddate(생성 모델) 또는 createdAt(예전 DTO) 어느 쪽이든 createddate 로 맞춘다.
+//   user = { id, email, name, level, createddate }  (생성된 User 응답과 같다, 비밀번호 없음)
+//   실패는 HTTP 상태 코드 + { status, message, fieldErrors? } → services/api.ts 가 HttpError 로 던진다.
 import { get, post } from '../services/api'
-import { checkGoError } from '../models/contract'
 import type { User } from '../types/user'
 
 export interface LoginRequest {
@@ -25,14 +21,15 @@ export interface SignupRequest {
   password: string
 }
 
-/** 로그인한 사용자. id / email / name 은 꼭 있고 나머지는 백엔드에 따라 없을 수 있다. */
-export type AuthUser = Pick<User, 'id' | 'email' | 'name'> &
-  Partial<Omit<User, 'id' | 'email' | 'name'>>
+/** 로그인한 사용자 = 생성된 User 응답 (비밀번호 없음). */
+export type AuthUser = Omit<User, 'passwd'>
 
 export interface AuthResult {
   token: string
-  /** 응답에 사용자가 없으면 null (호출한 쪽이 /auth/me 로 읽는다). */
-  user: AuthUser | null
+  tokenType: string
+  /** 토큰 유효 시간 (밀리초, 백엔드 JWT_EXPIRATION_MS). */
+  expiresInMs: number
+  user: AuthUser
 }
 
 type Json = Record<string, unknown>
@@ -41,66 +38,40 @@ function isRecord(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-// 응답 본문과 그 안의 봉투(item / data / result)를 바깥부터 차례로 돌려준다.
-function layers(data: unknown): Json[] {
-  const ret: Json[] = []
-  let cur: unknown = data
-  while (isRecord(cur) && ret.length < 4) {
-    ret.push(cur)
-    cur = cur.item ?? cur.data ?? cur.result
-  }
-  return ret
-}
-
-function tokenOf(obj: Json): string | null {
-  for (const key of ['token', 'accessToken', 'access_token']) {
-    const value = obj[key]
-    if (typeof value === 'string' && value !== '') return value
-  }
-  return null
-}
-
-/** 사용자 객체로 보이면 AuthUser 로 바꾼다 (id 가 숫자 / 숫자 문자열이어야 한다). */
+/** 계약의 user 객체면 AuthUser 로, 아니면 null. 비밀번호 필드가 있어도 버린다. */
 export function toAuthUser(value: unknown): AuthUser | null {
   if (!isRecord(value)) return null
-  const id = typeof value.id === 'string' ? Number(value.id) : value.id
-  if (typeof id !== 'number' || Number.isNaN(id)) return null
-  const user = { ...value, id } as AuthUser & Json
-  // 비밀번호는 응답에 없어야 하지만, 혹시 있어도 상태에 두지 않는다.
-  delete user.passwd
-  delete user.password
-  user.email = typeof value.email === 'string' ? value.email : ''
-  user.name = typeof value.name === 'string' ? value.name : ''
-  if (user.createddate === undefined && typeof value.createdAt === 'string') {
-    user.createddate = value.createdAt
+  const { id, email, name, level, createddate } = value
+  if (typeof id !== 'number' || typeof email !== 'string') return null
+  return {
+    id,
+    email,
+    name: typeof name === 'string' ? name : '',
+    level: typeof level === 'number' ? level : 0,
+    createddate: typeof createddate === 'string' ? createddate : '',
   }
-  delete user.createdAt
+}
+
+/** /auth/me 응답 (user 그대로). */
+export function parseUser(data: unknown): AuthUser {
+  const user = toAuthUser(data)
+  if (!user) throw new Error('사용자 정보를 읽지 못했습니다.')
   return user
 }
 
-/** /auth/me 응답: 사용자 그대로, 또는 { user } / { item } / { data } 봉투. */
-export function parseUser(data: unknown): AuthUser | null {
-  checkGoError(data)
-  for (const layer of layers(data)) {
-    const user = toAuthUser(layer.user) ?? toAuthUser(layer)
-    if (user) return user
-  }
-  return null
-}
-
-/** 로그인 / 회원가입 응답에서 토큰과 (있으면) 사용자를 꺼낸다. 토큰이 없으면 던진다. */
+/** 로그인 / 회원가입 응답. token 이나 user 가 없으면 던진다. */
 export function parseAuthResponse(data: unknown): AuthResult {
-  checkGoError(data)
-  let token: string | null = null
-  let user: AuthUser | null = null
-  for (const layer of layers(data)) {
-    token ??= tokenOf(layer)
-    user ??= toAuthUser(layer.user)
-  }
-  if (!token) {
+  if (!isRecord(data) || typeof data.token !== 'string' || !data.token) {
     throw new Error('인증 응답에 토큰이 없습니다.')
   }
-  return { token, user }
+  const user = toAuthUser(data.user)
+  if (!user) throw new Error('인증 응답에 사용자 정보가 없습니다.')
+  return {
+    token: data.token,
+    tokenType: typeof data.tokenType === 'string' ? data.tokenType : 'Bearer',
+    expiresInMs: typeof data.expiresInMs === 'number' ? data.expiresInMs : 0,
+    user,
+  }
 }
 
 export async function login(body: LoginRequest): Promise<AuthResult> {
@@ -116,9 +87,5 @@ export async function signup(body: SignupRequest): Promise<AuthResult> {
 /** 저장된 토큰으로 현재 사용자 조회 (앱 시작 시 토큰 확인용). */
 export async function fetchMe(): Promise<AuthUser> {
   const res = await get<unknown>('/auth/me')
-  const user = parseUser(res.data)
-  if (!user) {
-    throw new Error('사용자 정보를 읽지 못했습니다.')
-  }
-  return user
+  return parseUser(res.data)
 }

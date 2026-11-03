@@ -258,7 +258,7 @@ const sortableColumns: DataTableColumn[] = demoColumns.map((col) => ({
   sortable: col.key === 'id' || col.key === 'name' || col.key === 'joinedAt',
 }))
 
-// 생성 모델로 1-based 페이지를 읽는다. 이름 필터는 백엔드에서 정확히 일치(=) 비교다.
+// 생성 모델로 1-based 페이지를 읽는다. 이름 필터는 부분 일치다 (관리자가 아니면 본인만 보인다).
 const fetchPickerUsers = (page: number, keyword: string) =>
   UserModel.findpage({
     page,
@@ -475,7 +475,7 @@ function handlePick(user: User) {
         :fetch-items="fetchPickerUsers"
         :columns="userColumns"
         :row-key="(u: User) => u.id"
-        placeholder="이름으로 검색 (정확히 일치)"
+        placeholder="이름 일부로 검색"
         @close="pickerOpen = false"
         @select="handlePick"
       />

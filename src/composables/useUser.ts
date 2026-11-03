@@ -2,6 +2,8 @@
 // Auto-generated Vue 3 composable for User
 // Generated from table: user
 // Go / Spring 어느 백엔드든 같게 동작한다 (models/contract.ts). 실패(HTTP 에러, Go 의 code 에러)는 error 에 담긴다.
+// 조회(fetch*)는 마지막 요청의 응답만 반영한다 (늦게 온 이전 응답은 버린다).
+// 쓰기(create/update/remove)는 실패하면 error 에 담고 다시 던진다 (호출한 쪽에서 try/catch).
 import { ref } from 'vue'
 import type { Ref } from 'vue'
 import UserModel from '../models/user'
@@ -15,52 +17,100 @@ export function useUser() {
   const total = ref(0)
   const loading = ref(false)
   const error = ref<unknown>(null)
+  // 마지막 조회 요청 번호와 진행 중인 요청 수
+  let seq = 0
+  let pending = 0
 
-  async function run<T>(fn: () => Promise<T>): Promise<T | undefined> {
+  function begin() {
+    pending += 1
     loading.value = true
+  }
+
+  function end() {
+    pending -= 1
+    loading.value = pending > 0
+  }
+
+  // 조회: 더 늦게 시작한 조회가 있으면 결과와 에러를 버린다.
+  async function load<T>(fn: () => Promise<T>, apply: (res: T | undefined) => void) {
+    const id = ++seq
+    begin()
+    error.value = null
+    try {
+      const res = await fn()
+      if (id === seq) {
+        apply(res)
+      }
+    } catch (e) {
+      if (id === seq) {
+        error.value = e
+        apply(undefined)
+      }
+    } finally {
+      end()
+    }
+  }
+
+  // 쓰기: 실패하면 error 에 담고 다시 던진다.
+  async function mutate<T>(fn: () => Promise<T>): Promise<T> {
+    begin()
     error.value = null
     try {
       return await fn()
     } catch (e) {
       error.value = e
-      return undefined
+      throw e
     } finally {
-      loading.value = false
+      end()
     }
   }
 
   async function fetchPage(params: UserSearchParams = {}) {
-    const res = await run(() => UserModel.findpage(params))
-    if (res) {
-      items.value = res.items
-      total.value = res.total
-    }
+    await load(
+      () => UserModel.findpage(params),
+      (res) => {
+        if (res) {
+          items.value = res.items
+          total.value = res.total
+        }
+      },
+    )
   }
 
   async function fetchAll(params: UserSearchParams = {}) {
-    const res = await run(() => UserModel.findall(params))
-    if (res) {
-      items.value = res
-      total.value = res.length
-    }
+    await load(
+      () => UserModel.findall(params),
+      (res) => {
+        if (res) {
+          items.value = res
+          total.value = res.length
+        }
+      },
+    )
   }
-
 
   async function fetchOne(id: Id) {
-    const res = await run(() => UserModel.get(id))
-    item.value = res ?? null
+    await load(
+      () => UserModel.get(id),
+      (res) => {
+        item.value = res ?? null
+      },
+    )
   }
 
+  /** 추가한다. 실패하면 error 에 담고 다시 던진다. */
   async function create(data: Partial<User>) {
-    return run(() => UserModel.insert(data))
+    return mutate(() => UserModel.insert(data))
   }
 
+  /** 보낸 필드만 수정한다. 실패하면 error 에 담고 다시 던진다. */
   async function update(id: Id, data: Partial<User>) {
-    return run(() => UserModel.update(id, data))
+    return mutate(() => UserModel.update(id, data))
   }
 
+  /** 삭제한다. 실패하면 error 에 담고 다시 던진다. */
   async function remove(id: Id) {
-    return run(() => UserModel.remove(id))
+    return mutate(() => UserModel.remove(id))
   }
 
   return {

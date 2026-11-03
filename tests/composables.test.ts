@@ -5,6 +5,8 @@ import { useUser } from '../src/composables/useUser'
 import { ApiError } from '../src/models/contract'
 import { HttpError, setTokenProvider } from '../src/services/api'
 import { errorMessage } from '../src/lib/errors'
+import type { CreateBoardRequest } from '../src/types/board'
+import type { CreateUserRequest } from '../src/types/user'
 import { mockFetch } from './helpers'
 
 const author = {
@@ -88,11 +90,12 @@ describe.each([
   it('create: 생성한 id 를 돌려준다 (Go 는 {id}, Spring 은 엔티티)', async () => {
     const { calls } = mockFetch({ body: shape.created })
     const b = useBoard()
-    const created = await b.create({
+    const req: CreateBoardRequest = {
       title: '제목',
       content: '내용',
       img: null,
-    })
+    }
+    const created = await b.create(req)
     expect(calls[0].method).toBe('POST')
     expect(calls[0].url).toBe('/api/board')
     expect(created?.id).toBe(3)
@@ -113,7 +116,7 @@ describe.each([
   })
 })
 
-describe('에러는 composable 의 error 에 담긴다', () => {
+describe('에러는 composable 의 error 에 담긴다 (쓰기는 다시 던진다)', () => {
   it('Go: HTTP 200 + code "auth error" → ApiError', async () => {
     mockFetch({ body: { code: 'auth error' } })
     const b = useBoard()
@@ -122,6 +125,14 @@ describe('에러는 composable 의 error 에 담긴다', () => {
     expect((b.error.value as ApiError).code).toBe('auth error')
     expect(b.items.value).toEqual([])
     expect(errorMessage(b.error.value, 'x')).toContain('권한')
+  })
+
+  it('쓰기의 Go code 에러는 error 에 담고 ApiError 를 다시 던진다', async () => {
+    mockFetch({ body: { code: 'auth error' } })
+    const b = useBoard()
+    await expect(b.update(3, { title: 'x' })).rejects.toBeInstanceOf(ApiError)
+    expect((b.error.value as ApiError).code).toBe('auth error')
+    expect(b.loading.value).toBe(false)
   })
 
   it('Go: 없는 행은 {item: null} → item null, 에러 아님', async () => {
@@ -138,7 +149,7 @@ describe('에러는 composable 의 error 에 담긴다', () => {
     await b.fetchOne(99)
     expect(b.item.value).toBeNull()
     expect((b.error.value as HttpError).status).toBe(404)
-    await b.remove(1)
+    await expect(b.remove(1)).rejects.toBeInstanceOf(HttpError)
     expect((b.error.value as HttpError).status).toBe(403)
     expect(errorMessage(b.error.value, 'x')).toBe('권한이 없습니다.')
   })
@@ -171,7 +182,8 @@ describe('useUser', () => {
   it('create 는 비밀번호 컬럼 passwd 를 본문에 보낸다', async () => {
     const { calls } = mockFetch({ body: { id: 9, code: 'ok' } })
     const u = useUser()
-    const created = await u.create({ email: 'x@y.z', name: 'x', passwd: 'pw' })
+    const req: CreateUserRequest = { email: 'x@y.z', name: 'x', passwd: 'pw' }
+    const created = await u.create(req)
     expect(calls[0].body).toEqual({ email: 'x@y.z', name: 'x', passwd: 'pw' })
     expect(created?.id).toBe(9)
   })

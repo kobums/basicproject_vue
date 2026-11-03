@@ -14,8 +14,16 @@ export interface SearchOption {
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-// 현재 커밋된 검색 조건(초기값/리셋 기준)과 고를 수 있는 필드
-const props = defineProps<{ value: SearchValue; options: SearchOption[] }>()
+// 현재 커밋된 검색 조건(초기값/리셋 기준)과 고를 수 있는 필드.
+// 문자열 필터는 모든 gomachine 백엔드에서 부분 일치(like '%값%')라 기본 안내도 그렇게 적는다.
+const props = withDefaults(
+  defineProps<{
+    value: SearchValue
+    options: SearchOption[]
+    placeholder?: string
+  }>(),
+  { placeholder: '검색어 일부를 입력하세요 (부분 일치)' },
+)
 const emit = defineEmits<{ search: [search: SearchValue] }>()
 
 // 목록 위에 놓이는 검색 입력줄. 입력 중인 값(draft)은 내부에서 관리하고,
@@ -50,7 +58,7 @@ const hasActiveSearch = computed(() => props.value.keyword.trim().length > 0)
         v-model="keyword"
         class="search-input"
         type="search"
-        placeholder="검색어를 입력하세요"
+        :placeholder="placeholder"
         aria-label="검색어"
       />
 

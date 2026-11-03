@@ -15,12 +15,13 @@ import { formatDateTime, imageUrl } from '../lib/format'
 import { errorMessage } from '../lib/errors'
 
 // 생성 composable(useBoard) + 1-based 페이지. 작성자 이름은 조인 결과 extra.user 에 있다.
+// board 는 read: "login" 이라 로그인 사용자는 모든 글을 본다 (수정 / 삭제는 작성자만).
 const { items, total, loading, error, fetchPage } = useBoard()
 const router = useRouter()
 
 const page = ref(1)
 const pagesize = ref(10)
-// 검색은 생성 BoardSearchParams 의 필터 이름을 쓴다 (백엔드에서 정확히 일치 비교).
+// 검색은 생성 BoardSearchParams 의 필터 이름을 쓴다 (문자열 필터는 백엔드에서 부분 일치).
 const SEARCH_OPTIONS: SearchOption[] = [
   { value: 'title', label: '제목' },
   { value: 'content', label: '내용' },

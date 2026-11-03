@@ -13,14 +13,18 @@ import ListToolbar from '../components/ListToolbar.vue'
 import DataTable, { type DataTableColumn } from '../components/DataTable.vue'
 import { formatDateTime } from '../lib/format'
 import { errorMessage } from '../lib/errors'
+import { useAuthStore } from '../stores/auth'
 
 // 생성 composable(useUser) + 1-based 페이지.
+// 백엔드는 관리자(level ≥ ADMIN_LEVEL)에게만 모든 회원을, 나머지에게는 본인 행만 돌려준다.
+// 그래서 관리자가 아니면 검색 / 회원 추가 없이 본인 정보만 보여준다.
 const { items, total, loading, error, fetchPage } = useUser()
 const router = useRouter()
+const auth = useAuthStore()
 
 const page = ref(1)
 const pagesize = ref(10)
-// 생성 UserSearchParams 의 필터 이름 (name 은 정확히 일치, email 은 Go 에서 like 라 % 를 쓸 수 있다)
+// 생성 UserSearchParams 의 필터 이름 (문자열 필터는 모든 백엔드에서 부분 일치)
 const SEARCH_OPTIONS: SearchOption[] = [
   { value: 'name', label: '이름' },
   { value: 'email', label: '이메일' },
@@ -70,15 +74,21 @@ const columns: DataTableColumn[] = [
 
 <template>
   <section class="page">
-    <PageHeader title="회원">
-      <RouterLink class="btn btn-primary" to="/users/new">회원 추가</RouterLink>
+    <PageHeader :title="auth.isAdmin ? '회원 관리' : '내 정보'">
+      <RouterLink v-if="auth.isAdmin" class="btn btn-primary" to="/users/new">
+        회원 추가
+      </RouterLink>
     </PageHeader>
 
     <SearchBar
+      v-if="auth.isAdmin"
       :value="search"
       :options="SEARCH_OPTIONS"
       @search="submitSearch"
     />
+    <p v-else class="muted user-self-note">
+      관리자가 아니면 본인 정보만 볼 수 있습니다.
+    </p>
 
     <p v-if="loading" class="muted">불러오는 중…</p>
     <p v-if="error" class="error">

@@ -6,7 +6,7 @@ import ToastStack from './components/ToastStack.vue'
 import LoadingOverlay from './components/LoadingOverlay.vue'
 
 const auth = useAuthStore()
-const { user, isAuthenticated } = storeToRefs(auth)
+const { user, isAuthenticated, isAdmin } = storeToRefs(auth)
 const router = useRouter()
 
 function handleLogout() {
@@ -21,7 +21,9 @@ function handleLogout() {
     <div class="topnav-links">
       <!-- "/" 는 모든 경로의 접두사라 exact 매칭일 때만 active 를 준다 -->
       <RouterLink to="/" exact-active-class="active">게시판</RouterLink>
-      <RouterLink to="/users" active-class="active">회원</RouterLink>
+      <RouterLink to="/users" active-class="active">
+        {{ isAdmin ? '회원 관리' : '내 정보' }}
+      </RouterLink>
       <RouterLink to="/components" active-class="active">컴포넌트</RouterLink>
     </div>
     <div class="topnav-auth">

@@ -13,7 +13,7 @@ const { notify } = useFeedbackStore()
 
 const userId = computed(() => Number(route.params.id))
 const { item: user, loading, error, fetchOne } = useUser()
-const { update, loading: submitting, error: saveError } = useUser()
+const { update, loading: submitting } = useUser()
 
 watch(userId, (id) => void fetchOne(id), { immediate: true })
 
@@ -24,13 +24,11 @@ async function handleSubmit(values: UserFormValues) {
   // 이메일은 바꾸지 않는다. 비밀번호(passwd)는 입력했을 때만 보낸다 (비우면 기존 값 유지).
   const body: UpdateUserRequest = { name: values.name }
   if (values.password) body.passwd = values.password
-  await update(userId.value, body)
-  if (saveError.value) {
-    fieldErrors.value = fieldErrorsOf(saveError.value)
-    notify({
-      type: 'error',
-      message: errorMessage(saveError.value, '수정에 실패했습니다.'),
-    })
+  try {
+    await update(userId.value, body)
+  } catch (e) {
+    fieldErrors.value = fieldErrorsOf(e)
+    notify({ type: 'error', message: errorMessage(e, '수정에 실패했습니다.') })
     return
   }
   notify({ type: 'success', message: '회원 정보가 수정되었습니다.' })
